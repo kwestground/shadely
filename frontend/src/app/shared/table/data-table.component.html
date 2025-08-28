@@ -1,0 +1,53 @@
+<div class="overflow-x-auto rounded-lg" [class.opacity-60]="loading">
+  <table class="table" [ngClass]="{'table-xs': dense, 'table-sm': !dense}">
+    <thead>
+      <tr>
+  <th *ngFor="let col of columns" (click)="onSort(col)" [class.cursor-pointer]="col.sortable" [class.select-none]="col.sortable" [ngClass]="headerClasses(col)">
+          <span class="inline-flex items-center gap-1">{{col.header}}<span class="opacity-60">{{indicator(col.field)}}</span></span>
+        </th>
+        <th *ngIf="rowActionsTpl"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of items" class="hover:bg-base-200/60 transition-colors" (click)="rowClick.emit(row)">
+        <td *ngFor="let col of columns" [ngClass]="rowClasses(col, row)">
+          <ng-container *ngIf="templateFor()[col.field]; else plain" [ngTemplateOutlet]="templateFor()[col.field]" [ngTemplateOutletContext]="{ $implicit: row, row: row }"></ng-container>
+          <ng-template #plain>{{row[col.field]}}</ng-template>
+        </td>
+        <td *ngIf="rowActionsTpl">
+          <ng-container *ngTemplateOutlet="rowActionsTpl; context: { $implicit: row, row: row }"></ng-container>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<div *ngIf="!loading && total===0" class="p-6 text-center text-sm opacity-70">Inga poster.</div>
+
+<div *ngIf="showFooter && total>0" class="px-4 py-3 border-t border-base-200">
+  <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6 w-full">
+    <!-- Left: page size -->
+    <div class="flex items-center gap-2">
+      <label class="text-xs opacity-70 whitespace-nowrap" for="dt-page-size">Rader / sida</label>
+      <select id="dt-page-size" class="select select-bordered select-xs focus-ring w-24" [ngModel]="pageSize" (ngModelChange)="changePageSize($event)">
+        <option *ngFor="let opt of pageSizeOptions" [ngValue]="opt">{{opt}}</option>
+      </select>
+    </div>
+
+    <!-- Center: pagination -->
+    <div class="flex items-center justify-center order-last md:order-none mx-auto">
+      <div class="join">
+        <button class="btn btn-xs join-item" (click)="changePage(page-1)" [disabled]="page===1">«</button>
+        <ng-container *ngFor="let p of pages()">
+          <button class="btn btn-xs join-item" [class.btn-active]="page===p" (click)="changePage(p)">{{p}}</button>
+        </ng-container>
+        <button class="btn btn-xs join-item" (click)="changePage(page+1)" [disabled]="page===totalPages">»</button>
+      </div>
+    </div>
+
+    <!-- Right: range + page info -->
+    <div class="flex flex-col sm:flex-row sm:items-center gap-1 md:ml-auto text-xs opacity-70">
+      <span>Visar {{from}}–{{to}} av {{total}}</span>
+      <span class="hidden sm:inline-block opacity-60">| Sida {{page}} / {{totalPages}}</span>
+    </div>
+  </div>
+</div>

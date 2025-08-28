@@ -1,52 +1,62 @@
 <div class="max-w-7xl mx-auto flex flex-col gap-6">
-  <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-    <h1>Kunder</h1>
-    <div class="flex gap-2 w-full sm:w-auto">
-      <input type="text" placeholder="Sök kund eller kontakt" class="input input-sm input-bordered flex-1 focus-ring" [(ngModel)]="filterValue" />
-      <button class="btn btn-sm focus-ring" (click)="clear()" *ngIf="filter()">Rensa</button>
-      <button class="btn btn-primary btn-sm focus-ring" routerLink="/kunder/ny">Ny Kund</button>
+  <!-- Header + Filters -->
+  <div class="flex flex-col gap-4">
+    <!-- Title -->
+    <div>
+      <h1>Kunder</h1>
+    </div>
+    <!-- Filter bar + primary action -->
+    <div class="flex flex-wrap gap-4 items-end w-full">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium opacity-70">Snabbsök</label>
+        <div class="flex gap-2">
+          <input type="text" placeholder="(namn, kontakt, telefon)" class="input input-sm input-bordered w-64 focus-ring" [(ngModel)]="searchValue" />
+          <button class="btn btn-sm focus-ring" (click)="clearSearch()" *ngIf="search()">Rensa</button>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium opacity-70">Status</label>
+        <select class="select select-bordered select-sm w-36 focus-ring" [(ngModel)]="statusFilter">
+          <option>Alla</option>
+          <option>Aktiv</option>
+          <option>Vilande</option>
+        </select>
+      </div>
+      <!-- Push action button to far right -->
+      <div class="ml-auto flex items-end">
+        <button class="btn btn-primary btn-sm focus-ring gap-2" routerLink="/kunder/ny"><span class="text-base leading-none font-bold">+</span><span>Ny Kund</span></button>
+      </div>
     </div>
   </div>
 
+  <!-- Table Component -->
   <div class="panel p-0">
-    <div class="overflow-x-auto rounded-lg">
-      <table class="table table-sm">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Namn</th>
-            <th>Kontakt</th>
-            <th>Telefon</th>
-            <th>Projekt</th>
-            <th>Status</th>
-            <th>Skapad</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let c of filtered()" class="hover:bg-base-200/60 transition-colors">
-            <td class="font-mono tabular-nums">{{c.id}}</td>
-            <td class="font-medium">{{c.name}}</td>
-            <td>{{c.contact}}</td>
-            <td>{{c.phone}}</td>
-            <td>
-              <div class="badge badge-outline font-mono tabular-nums">{{c.projects}}</div>
-            </td>
-            <td>
-              <div class="badge" [class.badge-success]="c.status==='Aktiv'" [class.badge-ghost]="c.status==='Vilande'">{{c.status}}</div>
-            </td>
-            <td class="font-mono tabular-nums">{{c.created}}</td>
-            <td>
-              <div class="flex gap-1 justify-end">
-                <button class="btn btn-ghost btn-xs focus-ring">Visa</button>
-                <button class="btn btn-ghost btn-xs focus-ring">Projekt</button>
-                <button class="btn btn-ghost btn-xs focus-ring">Mer</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div *ngIf="filtered().length===0" class="p-6 text-center text-sm opacity-70">Inga kunder matchar sökningen.</div>
+    <app-data-table
+      [columns]="columns"
+      [items]="result().items"
+      [total]="total()"
+      [page]="page()"
+      [pageSize]="pageSize()"
+      [totalPages]="totalPages()"
+      [sortField]="sortField()"
+      [sortDir]="sortDir()"
+      (sort)="toggleSort($event)"
+      (pageChange)="setPage($event)"
+      (pageSizeChange)="changePageSize($event)">
+
+      <ng-template dataTableCell="projects" let-row>
+        <div class="badge badge-outline font-mono tabular-nums">{{row.projects}}</div>
+      </ng-template>
+      <ng-template dataTableCell="status" let-row>
+        <div class="badge" [class.badge-success]="row.status==='Aktiv'" [class.badge-ghost]="row.status==='Vilande'">{{row.status}}</div>
+      </ng-template>
+      <ng-template #rowActions let-row>
+        <div class="flex gap-1 justify-end">
+          <button class="btn btn-ghost btn-2xs md:btn-xs focus-ring">Visa</button>
+          <button class="btn btn-ghost btn-2xs md:btn-xs focus-ring">Projekt</button>
+          <button class="btn btn-ghost btn-2xs md:btn-xs focus-ring">Mer</button>
+        </div>
+      </ng-template>
+    </app-data-table>
   </div>
 </div>

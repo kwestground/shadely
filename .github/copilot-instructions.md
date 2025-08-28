@@ -44,6 +44,7 @@ Purpose: Enable AI coding agents to be immediately productive in this mono‑rep
 - New shared UI: create `src/app/shared/` (components, directives, pipes) once first reuse occurs; keep atomic (no barrel file until there are >3 exports).
 - Testing: When introduced, colocate `*.spec.ts` next to component; keep tests light (render + key interaction). Use Angular TestBed with standalone component.
 - Performance: Prefer on-push style via standalone defaults + signals; avoid large reactive chains—simple signals suffice.
+- Documentation hygiene: When you add a new reusable component / directive / pipe (esp. under `shared/`), append or adjust a concise usage note in this file (or create a short `README.md` in that subfolder) covering: purpose, minimal usage snippet, key inputs/outputs, and any conventions (styling, accessibility, theming). Keep it terse so future agents can re-use without re-reading source.
 
 ## Quality & Consistency Checklist (Apply on PRs)
 - Component uses standalone & imports only what it needs.
@@ -57,3 +58,12 @@ If domain behavior seems ambiguous, first consult `README.md` domain sections; i
 
 ---
 Provide feedback if any section is unclear or if backend code is added so this guide can evolve.
+
+## Documentation Index (keep updated)
+Central index of living documentation under `docs/`. Whenever you add/rename/remove a doc in `docs/`, update this list in the same commit.
+
+Current docs:
+- `docs/DESIGN_GUIDELINES.md` – Frontend UI design & styling guidelines.
+- `docs/frontend/data-table.md` – Generic DataTable component usage & API.
+
+Rule: PRs introducing new docs MUST append a bullet with path + short (max ~12 words) description here.
