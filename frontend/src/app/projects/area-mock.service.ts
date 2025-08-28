@@ -50,6 +50,13 @@ export class AreaMockService {
     return pos;
   }
 
+  updateAreaName(areaId: number, name: string) {
+    const area = this.getArea(areaId);
+    if (!area) return;
+    area.name = name;
+    this.areas.set([...this.areas()]);
+  }
+
   updatePosition(areaId: number, position: AreaPosition) {
     const area = this.getArea(areaId);
     if (!area) return;

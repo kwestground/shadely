@@ -11,7 +11,7 @@ import { ItemMockService, Item } from './item-mock.service';
   <div class="relative" (keydown)="onKey($event)">
     <div class="flex items-center gap-1">
       <input #inputEl type="text" class="input input-xs input-bordered w-full focus-ring" [placeholder]="placeholder" [ngModel]="search()" (ngModelChange)="onSearch($event)" (focus)="openPicker()" />
-      <button type="button" class="btn btn-ghost btn-2xs transition-opacity" [class.invisible]="!value()" (click)="clear()" [attr.tabindex]="value() ? 0 : -1">×</button>
+  <button type="button" class="btn btn-ghost btn-2xs transition-opacity" [class.invisible]="!value()" (click)="clear()" tabindex="-1" aria-label="Rensa val">×</button>
     </div>
     <!-- Fixed overlay to avoid clipping inside scrollable parents -->
     <div *ngIf="open()" #scroll class="fixed z-50 max-h-64 overflow-auto overscroll-contain shadow rounded bg-base-100 border border-base-300" (wheel)="$event.stopPropagation()" [style.top.px]="overlayPos().top" [style.left.px]="overlayPos().left" [style.width.px]="overlayPos().width">
@@ -115,6 +115,7 @@ export class ItemPickerComponent {
     if (ev.key === 'ArrowDown') { this.activeIndex.set(Math.min(this.filtered().length-1, this.activeIndex()+1)); ev.preventDefault(); }
     else if (ev.key === 'ArrowUp') { this.activeIndex.set(Math.max(0, this.activeIndex()-1)); ev.preventDefault(); }
     else if (ev.key === 'Enter') { const it = this.filtered()[this.activeIndex()]; if (it) { this.select(it); ev.preventDefault(); } }
+  else if (ev.key === 'Tab') { const it = this.filtered()[this.activeIndex()]; if (it) { this.select(it); } /* låt fokus gå vidare */ }
     else if (ev.key === 'Escape') { this.open.set(false); }
   }
 

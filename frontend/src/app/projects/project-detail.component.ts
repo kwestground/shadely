@@ -17,6 +17,7 @@ export class ProjectDetailComponent {
   areas = signal<Area[]>([]);
   addingArea = signal(false);
   newAreaName = signal('');
+  editingAreaId = signal<number|null>(null);
   // Inline layout (no tabs)
   addingPosAreaId = signal<number|null>(null);
   newPosData = signal<{areaId:number; name:string; width?: number; height?: number; fasteningType: string; fabric: string; fabricItemId?: number} | null>(null);
@@ -54,15 +55,54 @@ export class ProjectDetailComponent {
     }
   }
 
-  startAddArea() { this.addingArea.set(true); setTimeout(()=>{/* focus could be added */},0); }
-  cancelAddArea() { this.addingArea.set(false); this.newAreaName.set(''); }
-  saveArea() {
-    if (!this.newAreaName().trim() || !this.project()) return;
-    this.areasSvc.addArea(this.project()!.id, this.newAreaName().trim());
-  this.newAreaName.set('');
-  this.addingArea.set(false);
-  this.refreshAreas();
+  startAddArea() {
+    if (!this.project()) return;
+    const idx = this.areas().length + 1;
+    const area = this.areasSvc.addArea(this.project()!.id, `Område ${idx}`);
+    this.refreshAreas();
+    if (area) {
+      this.editingAreaId.set(area.id);
+      this.newAreaName.set(area.name);
+      setTimeout(()=>{
+        const el = document.getElementById(`edit-area-name-${area.id}`) as HTMLInputElement | null;
+        el?.focus(); el?.select();
+      },0);
+    }
   }
+  saveAreaName(areaId: number) {
+    const name = this.newAreaName().trim();
+    if (name) this.areasSvc.updateAreaName(areaId, name);
+    this.editingAreaId.set(null);
+    this.newAreaName.set('');
+    this.refreshAreas();
+    // Efter sparat områdesnamn: om inga positioner, starta direkt ny position och fokusera Namn
+    const area = this.areasSvc.getArea(areaId);
+    if (area && area.positions.length === 0) {
+      this.startAddPosition(area);
+      setTimeout(() => {
+        const cur = this.newPosData();
+        if (cur) {
+          this.newPosData.set({ ...cur, name: '' });
+          const el = document.getElementById(`new-pos-name-${area.id}`) as HTMLInputElement | null;
+          el?.focus();
+        }
+      }, 0);
+    }
+  }
+  onAreaNameKey(ev: KeyboardEvent, areaId: number) {
+    if (ev.key==='Enter') { ev.preventDefault(); this.saveAreaName(areaId); }
+    else if (ev.key==='Escape') { this.editingAreaId.set(null); this.newAreaName.set(''); }
+  }
+  startRenameArea(areaId: number) {
+    const area = this.areasSvc.getArea(areaId); if (!area) return;
+    this.editingAreaId.set(areaId);
+    this.newAreaName.set(area.name);
+    setTimeout(()=>{
+      const el = document.getElementById(`edit-area-name-${areaId}`) as HTMLInputElement | null;
+      el?.focus(); el?.select();
+    },0);
+  }
+  cancelRenameArea() { this.editingAreaId.set(null); this.newAreaName.set(''); }
 
   cancelAddPosition() {
     this.addingPosAreaId.set(null);
@@ -76,8 +116,19 @@ export class ProjectDetailComponent {
       const updated = { ...pos, width: data.width, height: data.height, fasteningType: data.fasteningType, fabric: data.fabric || undefined, fabricItemId: data.fabricItemId } as any;
       this.areasSvc.updatePosition(area.id, updated);
     }
-    this.cancelAddPosition();
+    // Refresh and keep add-mode for continuous entry
     this.refreshAreas();
+    const latestArea = this.areasSvc.getArea(area.id);
+    if (!latestArea) { this.cancelAddPosition(); return; }
+    const nextIndex = latestArea.positions.length + 1;
+    // Behåll tidigare fästtyp som bekvämlighet
+    const nextFastening = data.fasteningType;
+    this.newPosData.set({ areaId: area.id, name: `Pos ${nextIndex}`, fasteningType: nextFastening, fabric: '' });
+    // Töm ev. mått – användare matar nya
+    setTimeout(()=>{
+      const el = document.getElementById(`new-pos-name-${area.id}`) as HTMLInputElement | null;
+      if (el) { el.focus(); el.select(); }
+    },0);
   }
   setNewPosField<K extends keyof NonNullable<ReturnType<typeof this.newPosData>>>(field: K, value: any) {
     const cur = this.newPosData();

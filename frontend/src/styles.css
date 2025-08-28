@@ -30,3 +30,11 @@ html[data-theme='shadelydark'] .panel { border-color: rgba(226,232,240,0.2); }
 
 /* Utility for numeric alignment */
 .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Extra small button size (leaner än btn-xs) */
+@layer utilities {
+	.btn-2xs {
+	@apply btn-xs px-2 h-6 min-h-0 text-[11px];
+		line-height: 1rem;
+	}
+}
