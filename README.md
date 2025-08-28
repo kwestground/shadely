@@ -7,7 +7,7 @@ Systemet hanterar hela processen från kundkontakt, uppätning, tillverkning, mo
 
 ## Teknisk Stack
 
-- **Frontend**: Angular med Tailwind CSS
+- **Frontend**: Angular med Tailwind CSS + DaisyUI (custom light/dark teman)
 - **Backend**: .NET Core med Entity Framework Core
 - **Databas**: SQL Server / PostgreSQL
 - **Integration**: Fortnox API för fakturering, E-post (smtp/office365), SMS-utskick (ej klart med leverantör)
@@ -120,8 +120,9 @@ En användare kan ha flera roller och tillhöra flera ProductionGroups.
 - Beräkna leveransdatum baserat på material-leveranstider och produktionstid
 - Uppdatera CalculatedDeliveryDate på projekt och positioner
 - Beräkna priser baserat på material och arbetstid och prispåslag
-- Skapa offert för kund med leveransdatum
-- Vid godkännande: aktivera produktionsorder med tidsplan
+- Skapa offert för kund med leveransdatum (QuoteDate, QuoteValidUntil, QuoteTotalAmount)
+- Sätt projektstatus till "Quoted"
+- Vid godkännande: sätt status till "Approved" och aktivera produktionsorder med tidsplan
 - Generera inköpsorder (PurchaseOrder) för material
 - Skicka till produktionsteam (flera grupper; sömmerska, förmontage)
 
@@ -247,11 +248,18 @@ src/
 
 - Id, Name, Address, Phone, Email, CreatedDate
 
+### Suppliers
+
+- Id, Name, ContactPerson, Address, Phone, Email
+- PaymentTerms, DeliveryTerms, IsActive, CreatedDate
+- Notes, Website, OrganizationNumber
+
 ### Projects
 
 - Id, CustomerId, Name, Status, CreatedDate, CompletedDate
 - CustomerRequestedDeliveryDate, CalculatedDeliveryDate
-- Status: Draft, Measuring, Quoted, Approved, Purchasing, InProduction, Installing, Completed
+- QuoteDate, QuoteValidUntil, QuoteTotalAmount, QuoteNotes
+- Status (FK -> ProjectStatusEnum)
 
 ### Areas
 
@@ -262,26 +270,17 @@ src/
 - Id, AreaId, Name, PositionType, Width, Height, Depth
 - ProductTypeId, ConfigurationType, SelectedItemId (för Matrix-typ)
 - ConfigurationData (JSON för Dynamic-typ), ConfigurationHash
-- Measurements, Photos, Notes, Status
+- Measurements, Photos, Notes, Status (FK -> AreaPositionStatusEnum)
 - RequestedDeliveryDate, CalculatedDeliveryDate, ActualDeliveryDate
-
-### ConfigurationComponents
-
-- Id, AreaPositionId, ComponentType (Infästning/Kappa/etc.)
-- Position, ComponentData (JSON med alla parametrar)
-- MainItemId, SecondaryItemId, Quantity, SecondaryQuantity
-
-### ComponentParameters
-
-- Id, ConfigurationComponentId, ParameterName, ParameterValue
-- ParameterType (Text/Number/Selection/Material)
 
 ### Items
 
-- Id, Name, Category, Price, Description
+- Id, Name, Category, Price, ListPrice, Description
 - InventoryType (Normal/OrderSpecific)
 - ReorderPoint, ReorderQuantity (endast för Normal lager)
 - Unit (Grundenhet: st, m, kg, etc.)
+- CostPrice, Margin, IsActive, CreatedDate
+- ProductTypeId (null för vanliga material, ifyllt för produktionsartiklar)
 
 ### ItemAttributes
 
@@ -358,17 +357,12 @@ src/
 - Id, ConfigurationSectionId, ProductTypeAttributeId, DisplayOrder
 - IsVisible, ConditionalVisibility (JSON för villkor)
 
-### ProductConfigurations
-
-- Id, ProductType, MainProduct, ConfigurationTemplate (JSON)
-- Beskriver vilka parametrar som är tillgängliga för varje produkttyp
-
 ### ProductionOrders
 
 - Id, AreaPositionId, Status, CreatedDate, DueDate
 - AssignedUserId, Priority, Notes
 - CalculatedStartDate, CalculatedCompletionDate
-- Status: Draft, Approved, InProgress, Completed, OnHold
+- Status (FK -> ProductionOrderStatusEnum)
 
 ### ProductionOrderOperations
 
@@ -400,7 +394,7 @@ src/
 
 ### PurchaseOrders
 
-- Id, SupplierId, Status, OrderDate, ExpectedDeliveryDate
+- Id, SupplierId, Status (FK -> PurchaseOrderStatusEnum), OrderDate, ExpectedDeliveryDate
 - TotalAmount, Notes
 - DeliveryType (Warehouse/Customer/Production)
 - DeliveryAddress, DeliveryContactPerson, DeliveryPhone
@@ -417,11 +411,112 @@ src/
 - ProjectId (null för normalt lager, ifyllt för orderunikt)
 - InventoryType (Normal/OrderSpecific)
 
+### InventoryTransactions (NY)
+
+- Id, ItemId, TransactionType (FK -> InventoryTransactionTypeEnum)
+- QuantityChange (positiv/negativ), PreviousQuantity, NewQuantity
+- ReservedChange, PreviousReserved, NewReserved
+- ProjectId (för orderunikt)
+- ReferenceType (ProductionOrder, PurchaseOrder, Adjustment, AreaPosition)
+- ReferenceId
+- CorrelationId (batch-id)
+- PerformedByUserId, PerformedDate
+- Notes, IsReversal, ReversesTransactionId
+
+Syfte: Full spårbarhet av lagerförändringar, möjliggör revision och differensanalyser.
+
 ### Activity
 
 - Id, ProjectId, Type (Measurement/Installation), ScheduledDate
-- AssignedUserId, Status, Notes
+- AssignedUserId, Status (FK -> ActivityStatusEnum), Notes
 - PlannedStartTime, PlannedEndTime, ActualStartTime, ActualEndTime
+
+### Attachments
+
+- Id, EntityType, EntityId, FileName, FilePath, FileSize
+- FileType (Image/Document/Video), MimeType, Description
+- UploadedBy, UploadedDate, IsActive
+- EntityType: 'Project', 'Area', 'AreaPosition', 'ProductionOrder'
+- (Flexibel filhantering för alla huvudentiteter)
+
+### AuditLog (NY)
+
+- Id, EntityType, EntityId
+- Action (Create, Update, Delete, Restore, StatusChange, SoftDelete, HardDelete)
+- ChangedByUserId, ChangedDate
+- FieldChanges (JSON [{ field, old, new }])
+- Summary, CorrelationId, Source (API, UI, SystemJob)
+- PreviousStatus, NewStatus
+- IpAddress, UserAgent
+
+Implementeras via EF Core SaveChanges-interceptor + domänhändelser. Ignorera tekniska fält (RowVersion etc.).
+
+### Soft Delete Standard (NY)
+
+Basfält på huvudentiteter: IsDeleted, DeletedDate, DeletedByUserId.
+
+#### Regler
+
+- UI-delete -> Soft delete (sätter IsDeleted)
+- Hard delete endast via admin-jobb (loggas som HardDelete)
+- Global query filter `IsDeleted = false` med override i adminvy.
+
+### Status & Typer (Code Enums)
+
+Vi ersätter tidigare idé om enum-tabeller med vanliga .NET enums i kodbasen under MVP.
+
+Exempel (C#):
+ 
+```csharp
+public enum ProjectStatus { Draft, Measuring, Quoted, Approved, Purchasing, InProduction, Installing, Completed, Cancelled }
+public enum AreaPositionStatus { Draft, Measuring, Configured, Quoted, Approved, InProduction, Installing, Completed, Cancelled }
+public enum ProductionOrderStatus { Draft, PendingApproval, Approved, WaitingMaterial, InProgress, OnHold, Completed, Cancelled }
+public enum ActivityStatus { Scheduled, Confirmed, InProgress, Completed, Cancelled, Rescheduled }
+public enum PurchaseOrderStatus { Draft, Sent, Acknowledged, PartiallyReceived, Received, Closed, Cancelled }
+public enum InventoryTransactionType { Receipt, Consumption, Allocation, Deallocation, Reservation, ReleaseReservation, Adjustment, TransferOut, TransferIn, Correction, Reversal }
+```
+
+Persistens: lagras som string via `HasConversion<string>()` för läsbarhet.
+Översättning/visningsnamn hanteras i frontend eller via en statisk mapping-service.
+Vill vi senare lägga till metadata (beskrivningar, sortering, inaktivering) kan vi migrera specifika enums till tabeller utan att ändra domänlogik (introducera Value Objects + lookup cache).
+
+### MaterialShortageView (Use Case)
+
+Vy (eller materialiserad vy) för att upptäcka brister innan produktion stoppar.
+
+#### Beräkning
+
+- Summera ej slutförda ProductionOrderMaterials + framräknade framtida behov (ItemMaterials-expansion) minus (Allocated + Reserved + OnHand).
+
+Fält (exempel): ItemId, ItemName, RequiredQuantity, AllocatedQuantity, ReservedQuantity, OnHandQuantity, AvailableQuantity (OnHand-Allocated-Reserved), ShortageQuantity (max(Required-Available,0)), EarliestNeededDate, InventoryType, ProjectId (orderunikt), PreferredSupplierId, LeadTimeDays, SuggestedOrderDate, ShortageSeverity.
+
+#### Flöde
+
+1. Inköpare filtrerar ShortageQuantity > 0
+2. Markerar rader -> "Skapa PO" (manuell trigger)
+3. System grupperar per Supplier & InventoryType, avrundar upp mot MinOrderQuantity/ReorderQuantity
+4. Skapar PurchaseOrder + AuditLog + Reservation-transaktioner (Reservation/Allocation vid bekräftelse)
+
+Edge cases: Negativt OnHand -> ShortageSeverity=DataError, OrderSpecific visas per ProjectId, supplier-byte påverkar nästa vy-refresh.
+
+### Flödespåverkan
+
+1. Statusbyte valideras mot definierade transitions i kod (dictionary/state machine) och loggas.
+2. Soft delete loggas (Action=SoftDelete) och exkluderas via filter.
+3. Lagerändringar går via InventoryService -> InventoryTransactions batch.
+4. MaterialShortageView konsumeras innan PO-skapande; Receipt skapar Receipt-transaktion; vid allokering: Allocation.
+
+### Implementation Noteringar
+
+- BaseEntity: Id, CreatedDate, CreatedByUserId, ModifiedDate, ModifiedByUserId, IsDeleted, DeletedDate, DeletedByUserId, RowVersion
+- Audit: ChangeTracker diff -> FieldChanges JSON
+- Inventory disponibelt = Quantity - Allocated - Reserved
+- Reversal: spegling med länkat ReversesTransactionId
+- Enums lagras som string; vid namnbyte skapa fallback mapping/migration-script
+  (ex: tidigare värde 'InProduction' -> nytt 'Production' hanteras via script + AllowedLegacyValues-lista)
+
+---
+Tillägg: standardiserade statusar, revisionsspårning, soft delete, inventeringstransaktioner och shortage-analys.
 
 ## Utvecklingsfaser
 
@@ -430,7 +525,6 @@ src/
 - [ ] Användarhantering & autentisering
 - [ ] Rollbaserade behörigheter (RBAC)
 - [ ] CRUD för Customer, Project, Area
-- [ ] QR-kod generering och scanning
 - [ ] Grundläggande AreaPosition hantering
 - [ ] Enkel produktkatalog (Items)
 - [ ] Status-flöde för projekt
@@ -440,7 +534,8 @@ src/
 - [ ] Produktkonfigurator med dynamiska parametrar
 - [ ] ProductionOrder-generering från konfigurationer
 - [ ] Avancerad AreaPosition med mått och foton
-- [ ] Mobilanpassad mätapp med QR-scanning
+- [ ] Mobilanpassad mätapp
+- [ ] Attachments-system för filer och bilder
 - [ ] Foto-upload och skiss-hantering
 
 ### Fas 3: Kalender & Bokningssystem
@@ -474,6 +569,7 @@ src/
 - [ ] SMS och e-post notifieringar
 - [ ] Rapporter & dashboard
 - [ ] Export/import funktioner
+- [ ] QR-kod generering och scanning
 
 ### Fas 7: Kundportal & Avancerade funktioner
 
@@ -530,3 +626,119 @@ src/
 2. Definiera exakt statusflöde
 3. Skapa wireframes för huvudfunktioner
 4. Sätta upp utvecklingsmiljö
+
+## Referenser
+
+- Angular officiell LLM-referens: <https://angular.dev/llms.txt>
+- DaisyUI LLM-referens: <https://daisyui.com/llms.txt>
+
+## UI / Styling (Tailwind + DaisyUI)
+
+Mål: Snabb komponentbas + eget branding med två teman (light/dark) och möjlighet att senare utöka.
+
+### Teman
+
+Light theme id: `shadelylight`  | Dark theme id: `shadelydark`
+
+Växling sker genom att sätta `data-theme="shadelylight"` eller `data-theme="shadelydark"` på `<html>` eller en wrapper.
+
+### Rekommenderat filupplägg
+
+- `tailwind.config.js` – innehåller DaisyUI theme-definitioner
+- `src/styles.css` (eller `global.css`) – import av Tailwind layers
+- `src/app/core/theme/theme.service.ts` – enkel Angular service för toggle (valfritt)
+
+### Minimal konfig (utdrag)
+
+```js
+// tailwind.config.js (utdrag)
+module.exports = {
+  content: ['./src/**/*.{html,ts}'],
+  darkMode: 'class',
+  plugins: [require('daisyui')],
+  daisyui: {
+    themes: [
+      {
+        shadelylight: {
+          primary: '#3F6B9E',
+          'primary-content': '#ffffff',
+          secondary: '#7B8BA3',
+          accent: '#D97706',
+          neutral: '#374151',
+          'base-100': '#ffffff',
+          info: '#0ca5e9',
+          success: '#16a34a',
+          warning: '#f59e0b',
+          error: '#dc2626'
+        }
+      },
+      {
+        shadelydark: {
+          primary: '#64A5FF',
+          'primary-content': '#0B1221',
+          secondary: '#8899B1',
+          accent: '#F59E0B',
+          neutral: '#1E293B',
+          'base-100': '#0F172A',
+          info: '#38bdf8',
+          success: '#22c55e',
+          warning: '#f59e0b',
+          error: '#f87171'
+        }
+      }
+    ]
+  }
+}
+```
+
+### Angular theme toggle (exempel)
+
+```ts
+// theme.service.ts
+import { Injectable } from '@angular/core';
+
+type Theme = 'shadelylight' | 'shadelydark';
+
+@Injectable({ providedIn: 'root' })
+export class ThemeService {
+  private current: Theme = (localStorage.getItem('theme') as Theme) || 'shadelylight';
+  init() { this.apply(this.current); }
+  toggle() { this.apply(this.current === 'shadelylight' ? 'shadelydark' : 'shadelylight'); }
+  private apply(t: Theme) {
+    this.current = t;
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('theme', t);
+  }
+}
+```
+
+Anropa `themeService.init()` i `AppComponent` `ngOnInit`.
+
+### Komponentexempel
+
+```html
+<button class="btn btn-primary" (click)="theme.toggle()">Byt tema</button>
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <h2 class="card-title">Projekt</h2>
+    <p>Översikt...</p>
+  </div>
+</div>
+```
+
+### Riktlinjer
+
+- Återanvänd DaisyUI för bas (buttons, inputs, modals)
+- Skräddarsy domäntunga vyer (konfigurator, mätning) med utility-klasser för exakt layout
+- Lägg inte inline-färger; använd semantiska klasser (btn-primary etc.)
+- Om färg behöver särskiljas: överväg ny semantic token i theme, inte hårdkoda HEX
+
+### Ljus / mörk kontrastcheck
+
+När teman justeras: verifiera med t.ex. Lighthouse / axe att kontrast AA bibehålls (primärt mot base-100 / base-content).
+
+### Framtida förbättring
+
+- Lägg till tredje tema för kundportal med mjukare neutrals
+- Introducera CSS vars för spacing/typografi tokens om design blir mer avancerad
+- Automatisk dark-mode detektion via `prefers-color-scheme` innan man läser localStorage
