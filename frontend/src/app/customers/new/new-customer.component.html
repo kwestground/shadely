@@ -1,0 +1,54 @@
+<div class="max-w-3xl mx-auto flex flex-col gap-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold tracking-wide">Ny Kund</h1>
+    <a routerLink="/kunder" class="btn btn-ghost btn-sm">Tillbaka</a>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body space-y-4">
+      <div class="grid md:grid-cols-2 gap-4">
+        <label class="form-control w-full">
+          <div class="label"><span class="label-text">Företagsnamn *</span></div>
+          <input class="input input-bordered input-sm" required [(ngModel)]="model.name" name="name" placeholder="Ex: Nordic Living AB" />
+        </label>
+        <label class="form-control w-full">
+          <div class="label"><span class="label-text">Organisationsnummer</span></div>
+          <input class="input input-bordered input-sm" [(ngModel)]="model.orgNr" name="orgNr" placeholder="Ex: 559012-3456" />
+        </label>
+        <label class="form-control w-full">
+          <div class="label"><span class="label-text">Kontaktperson *</span></div>
+          <input class="input input-bordered input-sm" [(ngModel)]="model.contact" name="contact" placeholder="Ex: Anna Svensson" />
+        </label>
+        <label class="form-control w-full">
+          <div class="label"><span class="label-text">Telefon</span></div>
+          <input class="input input-bordered input-sm" [(ngModel)]="model.phone" name="phone" placeholder="070-123 45 67" />
+        </label>
+        <label class="form-control w-full">
+          <div class="label"><span class="label-text">E-post</span></div>
+          <input type="email" class="input input-bordered input-sm" [(ngModel)]="model.email" name="email" placeholder="kontakt@exempel.se" />
+        </label>
+        <label class="form-control w-full md:col-span-2">
+          <div class="label"><span class="label-text">Adress</span></div>
+          <textarea class="textarea textarea-bordered textarea-sm h-20" [(ngModel)]="model.address" name="address" placeholder="Gatuadress, Postnr Ort"></textarea>
+        </label>
+        <label class="form-control w-full md:col-span-2">
+          <div class="label"><span class="label-text">Anteckningar</span></div>
+          <textarea class="textarea textarea-bordered textarea-sm h-24" [(ngModel)]="model.notes" name="notes" placeholder="Interna anteckningar..."></textarea>
+        </label>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button class="btn btn-ghost btn-sm" type="button" routerLink="/kunder">Avbryt</button>
+        <button class="btn btn-primary btn-sm" type="button" [disabled]="saving || !model.name" (click)="saveMock()">
+          <span *ngIf="!saving">Spara</span>
+          <span *ngIf="saving" class="loading loading-spinner loading-xs"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-info shadow">
+    <div>
+      <span class="font-medium">Observera:</span> Detta är en statisk mock. Ingen data persisteras än.
+    </div>
+  </div>
+</div>

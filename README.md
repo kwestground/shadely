@@ -12,6 +12,17 @@ Systemet hanterar hela processen från kundkontakt, uppätning, tillverkning, mo
 - **Databas**: SQL Server / PostgreSQL
 - **Integration**: Fortnox API för fakturering, E-post (smtp/office365), SMS-utskick (ej klart med leverantör)
 
+### Språk
+
+MVP är helt på svenska och vi implementerar ingen flerspråksstöd (i18n). Riktlinjer:
+
+- Kod (klass-/enum-namn) hålls på engelska för tydlighet och framtida eventuell översättning.
+- All visningstext i UI är svenska strängar direkt i templates tills behov av i18n uppstår.
+- Ingen runtime språkväxling, ingen extraction pipeline behövs.
+- Undvik hårdkodade valutatecken i komponenter; använd formattering senare vid behov.
+
+Om/ när flerspråk krävs kan Angular i18n eller ngx-translate införas; strukturera därför inte kataloger efter språk nu.
+
 ## Domänmodell
 
 ### Kärnentiteter
@@ -34,12 +45,13 @@ Systemet hanterar hela processen från kundkontakt, uppätning, tillverkning, mo
 
 ## A. Standardprodukter (Matris-baserad)
 
-**Exempel: Rullgardin**
+### Exempel: Rullgardin
+
 - Produkttypen "Rullgardin" har en familj av ~10 färdiga artiklar
 - Konfigurationen sker genom att välja från fördefinierade kombinationer
 - **Attribut som definieras för produkttypen:**
   - Färg (från lista)
-  - Höjd (från tillgängliga storlekar)  
+  - Höjd (från tillgängliga storlekar)
   - Bredd (från tillgängliga storlekar)
 - Systemet matchar attributen mot befintliga artiklar i produktfamiljen
 - Om kombination finns: välj artikel direkt
@@ -47,11 +59,13 @@ Systemet hanterar hela processen från kundkontakt, uppätning, tillverkning, mo
 
 ## B. Kundunika produkter (Dynamisk konfiguration)
 
-**Exempel: Gardin**
-- En "produktionsartikel" per typ (t.ex. "Gardin") 
+### Exempel: Gardin
+
+- En "produktionsartikel" per typ (t.ex. "Gardin")
 - Dynamiska attribut grupperade i sektioner för bättre användarupplevelse
 
 **1. Gardin-sektion:**
+
 - Tyg: Välj från Items med Category="Fabric"
 - Bredd: Inmatning 10-800 cm
 - Höjd: Inmatning (fritt)
@@ -60,6 +74,7 @@ Systemet hanterar hela processen från kundkontakt, uppätning, tillverkning, mo
 - **Tygmängd**: Beräknat attribut `yta * 1.1` (visas som "2.64 m²")
 
 **2. Infästning-sektion:**
+
 - Tak/Betong: Dropdown val
 - Skena: Välj från Items med Category="Skena"
 - Längd: Inmatning för skena
@@ -69,8 +84,9 @@ Systemet hanterar hela processen från kundkontakt, uppätning, tillverkning, mo
 - Kommentar: Fritextfält
 
 **BOM-generering genom formler:**
+
 - Tygmängd = `tygmängd` (använder beräknat attribut)
-- Skenalängd = `total_skenalängd` (använder beräknat attribut) 
+- Skenalängd = `total_skenalängd` (använder beräknat attribut)
 - Fästeantal = `IF(fästtyp="Wave", CEILING(bredd/30), CEILING(bredd/25))`
 - Arbetstid = `yta * fästtyp_faktor` (använder beräknat attribut)
 
@@ -173,7 +189,7 @@ En användare kan ha flera roller och tillhöra flera ProductionGroups.
 
 ### Backend (.NET Core)
 
-```
+```text
 src/
 ├── Shadely.Api/              # Web API controllers
 ├── Shadely.Core/             # Domain models & interfaces
@@ -228,7 +244,7 @@ src/
 - Id, UserId, Role
 - Role (Säljare/Inköpare/Mätare/Admin)
 
-### ProductionGroups
+### ProductionGroups (Roller)
 
 - Id, Name, Description, HourlyRate
 - Name (Sömmerska/Förmontage/Montör)
@@ -383,14 +399,14 @@ src/
 - Id, ItemId, OperationName, ProductionGroupId, EstimatedHours
 - HoursFormula, Description, SequenceOrder
 - IsRequired, Conditions (JSON för när operationen behövs)
-- (T.ex: "Sy gardin", Formula: "(bredd * höjd / 10000) * fästtyp_faktor")
+- Exempel operation: "Sy gardin" med formula `(bredd * höjd /10000) * fästtyp_faktor`
 
 ### ItemMaterials
 
 - Id, ItemId, MaterialItemId, QuantityFormula, Unit
 - WasteFactor, IsOptional, Description
 - Conditions (JSON för när materialet behövs)
-- (T.ex: ItemId=Gardin, MaterialItemId=Tyg, Formula: "bredd * höjd * 1.1")
+- (T.ex: ItemId=Gardin, MaterialItemId=Tyg, Formula: "bredd * höjd *1.1")
 
 ### PurchaseOrders
 
@@ -742,3 +758,21 @@ När teman justeras: verifiera med t.ex. Lighthouse / axe att kontrast AA bibeh�
 - Lägg till tredje tema för kundportal med mjukare neutrals
 - Introducera CSS vars för spacing/typografi tokens om design blir mer avancerad
 - Automatisk dark-mode detektion via `prefers-color-scheme` innan man läser localStorage
+
+### Frontend Mock (Angular + Tailwind + DaisyUI)
+
+En prototyp finns i `frontend/` med en mock dashboard (ingen backend). Starta:
+
+```powershell
+cd frontend
+npm start
+```
+
+Funktioner:
+
+- Drawer-layout med sidomeny + topbar
+- Tema-toggle (light/dark) persist via localStorage
+- Stat cards, tabell, materialbrist-lista, timeline, quick actions
+- Allt hårdkodat för UI-experiment
+
+Nästa UI-steg: skapa komponentbibliotek (atoms/molecules), definiera spacing & typography tokens, börja bygga riktiga feature-moduler.

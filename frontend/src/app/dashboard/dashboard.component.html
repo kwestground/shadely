@@ -1,0 +1,83 @@
+<div class="flex flex-col gap-6">
+  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div *ngFor="let c of cards" class="stat bg-base-100 rounded-box shadow">
+      <div class="stat-figure text-primary text-2xl">{{c.icon}}</div>
+      <div class="stat-title">{{c.title}}</div>
+      <div class="stat-value">{{c.value}}</div>
+      <div class="stat-desc">{{c.desc}}</div>
+    </div>
+  </section>
+
+  <section class="grid gap-6 lg:grid-cols-3">
+    <div class="lg:col-span-2 flex flex-col gap-4">
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title">Produktionstatus</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra table-sm">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Typ</th>
+                  <th>Status</th>
+                  <th>Förfallodatum</th>
+                  <th>%</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let i of [1,2,3,4,5]">
+                  <td>PO-10{{i}}</td>
+                  <td>Gardin</td>
+                  <td><div class="badge badge-info">InProgress</div></td>
+                  <td>2025-09-0{{i}}</td>
+                  <td>
+                    <progress class="progress progress-primary w-24" [value]="20*i" max="100"></progress>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title">Materialbrister</h2>
+          <ul class="space-y-2">
+            <li *ngFor="let m of [1,2,3,4,5]" class="flex items-center justify-between gap-4">
+              <span class="truncate">Tyg Variant {{m}}</span>
+              <span class="badge badge-warning">-{{m*3}} st</span>
+            </li>
+          </ul>
+          <div class="card-actions justify-end">
+            <button class="btn btn-sm btn-primary">Gå till vy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-col gap-4">
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title">Snabbåtgärder</h2>
+          <div class="flex flex-wrap gap-2">
+            <button class="btn btn-sm">Ny Kund</button>
+            <button class="btn btn-sm">Nytt Projekt</button>
+            <button class="btn btn-sm">Mätning</button>
+            <button class="btn btn-sm">Inköp</button>
+          </div>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title">Notiser</h2>
+          <ul class="timeline timeline-vertical timeline-compact">
+            <li *ngFor="let n of [1,2,3,4]">
+              <div class="timeline-middle"><div class="badge badge-primary"></div></div>
+              <div class="timeline-end timeline-box text-sm">Event {{n}} skapad</div>
+              <hr *ngIf="n < 4"/>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

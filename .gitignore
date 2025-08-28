@@ -11,6 +11,9 @@
 *.sln.docstates
 *.env
 
+.angular/*
+dist
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -416,3 +419,48 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# --- Angular / Frontend (added) ---
+# Angular CLI cache
+.angular/cache/
+frontend/.angular/cache/
+
+# Frontend dependency dir (already have global node_modules/, kept for clarity if nested)
+frontend/node_modules/
+
+# Build & coverage outputs
+frontend/dist/
+frontend/coverage/
+coverage/
+
+# Lint / tooling caches
+.eslintcache
+.stylelintcache
+
+# Package manager stores
+.npm/
+.pnpm-store/
+.yarn/
+
+# Test artifacts (Cypress / Playwright / generic)
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+playwright-report/
+test-results/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS miscellanea
+.DS_Store
+Thumbs.db
+
+# Storybook (future)
+storybook-static/
+
+# Tailwind JIT artifacts (just in case)
+*.tailwind.css.map

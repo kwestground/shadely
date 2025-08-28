@@ -1,0 +1,54 @@
+<div class="flex flex-col gap-6">
+  <div class="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+    <h1 class="text-xl font-semibold tracking-wide">Kunder</h1>
+    <div class="flex gap-2 w-full sm:w-auto">
+  <input type="text" placeholder="Sök kund eller kontakt" class="input input-sm input-bordered flex-1" [(ngModel)]="filterValue" />
+      <button class="btn btn-sm" (click)="clear()" *ngIf="filter()">Rensa</button>
+  <button class="btn btn-primary btn-sm" routerLink="/kunder/ny">Ny Kund</button>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body p-0">
+      <div class="overflow-x-auto">
+        <table class="table table-zebra table-sm">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Namn</th>
+              <th>Kontakt</th>
+              <th>Telefon</th>
+              <th>Projekt</th>
+              <th>Status</th>
+              <th>Skapad</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of filtered()">
+              <td>{{c.id}}</td>
+              <td class="font-medium">{{c.name}}</td>
+              <td>{{c.contact}}</td>
+              <td>{{c.phone}}</td>
+              <td>
+                <div class="badge badge-outline">{{c.projects}}</div>
+              </td>
+              <td>
+                <div class="badge" [class.badge-success]="c.status==='Aktiv'" [class.badge-ghost]="c.status==='Vilande'">{{c.status}}</div>
+              </td>
+              <td>{{c.created}}</td>
+              <td>
+                <div class="flex gap-1 justify-end">
+                  <button class="btn btn-ghost btn-xs">Visa</button>
+                  <button class="btn btn-ghost btn-xs">Projekt</button>
+                  <button class="btn btn-ghost btn-xs">Mer</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div *ngIf="filtered().length===0" class="p-6 text-center text-sm opacity-70">Inga kunder matchar sökningen.</div>
+    </div>
+  </div>
+</div>
