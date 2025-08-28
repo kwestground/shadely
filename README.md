@@ -648,131 +648,18 @@ Tillägg: standardiserade statusar, revisionsspårning, soft delete, inventering
 - Angular officiell LLM-referens: <https://angular.dev/llms.txt>
 - DaisyUI LLM-referens: <https://daisyui.com/llms.txt>
 
-## UI / Styling (Tailwind + DaisyUI)
+## UI / Design
 
-Mål: Snabb komponentbas + eget branding med två teman (light/dark) och möjlighet att senare utöka.
+Se detaljerade riktlinjer i `docs/DESIGN_GUIDELINES.md` (typografi, färg, spacing, komponentmönster, a11y). För AI-/automationsinstruktioner och kodkonventioner se `.github/copilot-instructions.md`.
 
-### Teman
+Kort sammanfattning:
 
-Light theme id: `shadelylight`  | Dark theme id: `shadelydark`
+- DaisyUI teman: `shadelylight` / `shadelydark` (styr via `data-theme` på `<html>`).
+- Använd endast semantiska klasser (btn-primary, bg-base-100) – inga hårdkodade HEX i komponenter.
+- Panel pattern: `.panel` (bg-base-100, border, shadow-sm) för kort / containrar.
+- Typografi skala definierad globalt (h1–h3) + `font-mono tabular-nums` för siffror.
+- Fokus: `.focus-ring` utility för konsekvent fokusstil.
 
-Växling sker genom att sätta `data-theme="shadelylight"` eller `data-theme="shadelydark"` på `<html>` eller en wrapper.
+Frontend mock finns i `frontend/` – starta med `npm start` från den katalogen.
 
-### Rekommenderat filupplägg
-
-- `tailwind.config.js` – innehåller DaisyUI theme-definitioner
-- `src/styles.css` (eller `global.css`) – import av Tailwind layers
-- `src/app/core/theme/theme.service.ts` – enkel Angular service för toggle (valfritt)
-
-### Minimal konfig (utdrag)
-
-```js
-// tailwind.config.js (utdrag)
-module.exports = {
-  content: ['./src/**/*.{html,ts}'],
-  darkMode: 'class',
-  plugins: [require('daisyui')],
-  daisyui: {
-    themes: [
-      {
-        shadelylight: {
-          primary: '#3F6B9E',
-          'primary-content': '#ffffff',
-          secondary: '#7B8BA3',
-          accent: '#D97706',
-          neutral: '#374151',
-          'base-100': '#ffffff',
-          info: '#0ca5e9',
-          success: '#16a34a',
-          warning: '#f59e0b',
-          error: '#dc2626'
-        }
-      },
-      {
-        shadelydark: {
-          primary: '#64A5FF',
-          'primary-content': '#0B1221',
-          secondary: '#8899B1',
-          accent: '#F59E0B',
-          neutral: '#1E293B',
-          'base-100': '#0F172A',
-          info: '#38bdf8',
-          success: '#22c55e',
-          warning: '#f59e0b',
-          error: '#f87171'
-        }
-      }
-    ]
-  }
-}
-```
-
-### Angular theme toggle (exempel)
-
-```ts
-// theme.service.ts
-import { Injectable } from '@angular/core';
-
-type Theme = 'shadelylight' | 'shadelydark';
-
-@Injectable({ providedIn: 'root' })
-export class ThemeService {
-  private current: Theme = (localStorage.getItem('theme') as Theme) || 'shadelylight';
-  init() { this.apply(this.current); }
-  toggle() { this.apply(this.current === 'shadelylight' ? 'shadelydark' : 'shadelylight'); }
-  private apply(t: Theme) {
-    this.current = t;
-    document.documentElement.setAttribute('data-theme', t);
-    localStorage.setItem('theme', t);
-  }
-}
-```
-
-Anropa `themeService.init()` i `AppComponent` `ngOnInit`.
-
-### Komponentexempel
-
-```html
-<button class="btn btn-primary" (click)="theme.toggle()">Byt tema</button>
-<div class="card bg-base-100 shadow">
-  <div class="card-body">
-    <h2 class="card-title">Projekt</h2>
-    <p>Översikt...</p>
-  </div>
-</div>
-```
-
-### Riktlinjer
-
-- Återanvänd DaisyUI för bas (buttons, inputs, modals)
-- Skräddarsy domäntunga vyer (konfigurator, mätning) med utility-klasser för exakt layout
-- Lägg inte inline-färger; använd semantiska klasser (btn-primary etc.)
-- Om färg behöver särskiljas: överväg ny semantic token i theme, inte hårdkoda HEX
-
-### Ljus / mörk kontrastcheck
-
-När teman justeras: verifiera med t.ex. Lighthouse / axe att kontrast AA bibehålls (primärt mot base-100 / base-content).
-
-### Framtida förbättring
-
-- Lägg till tredje tema för kundportal med mjukare neutrals
-- Introducera CSS vars för spacing/typografi tokens om design blir mer avancerad
-- Automatisk dark-mode detektion via `prefers-color-scheme` innan man läser localStorage
-
-### Frontend Mock (Angular + Tailwind + DaisyUI)
-
-En prototyp finns i `frontend/` med en mock dashboard (ingen backend). Starta:
-
-```powershell
-cd frontend
-npm start
-```
-
-Funktioner:
-
-- Drawer-layout med sidomeny + topbar
-- Tema-toggle (light/dark) persist via localStorage
-- Stat cards, tabell, materialbrist-lista, timeline, quick actions
-- Allt hårdkodat för UI-experiment
-
-Nästa UI-steg: skapa komponentbibliotek (atoms/molecules), definiera spacing & typography tokens, börja bygga riktiga feature-moduler.
+För full beskrivning av flöden & domänspråk, se avsnitt Domänmodell ovan + design guidelines.
