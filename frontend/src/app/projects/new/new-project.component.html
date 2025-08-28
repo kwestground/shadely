@@ -1,0 +1,35 @@
+<div class="max-w-3xl mx-auto flex flex-col gap-6">
+  <div class="flex items-center justify-between">
+    <h1>Nytt Projekt</h1>
+    <a routerLink="/projekt" class="btn btn-ghost btn-sm focus-ring">Tillbaka</a>
+  </div>
+
+  <div class="panel p-4 md:p-6 space-y-4">
+    <div class="grid md:grid-cols-2 gap-4">
+      <label class="form-control w-full md:col-span-2">
+        <div class="label"><span class="label-text">Projektnamn *</span></div>
+        <input class="input input-bordered input-sm focus-ring" required [(ngModel)]="model.name" name="name" placeholder="Ex: Kontorsmodernisering" />
+      </label>
+      <label class="form-control w-full md:col-span-2">
+        <div class="label"><span class="label-text">Kund *</span></div>
+        <input class="input input-bordered input-sm focus-ring" required [(ngModel)]="model.customerName" name="customerName" placeholder="Ex: Nordic Living AB" />
+      </label>
+      <label class="form-control w-full">
+        <div class="label"><span class="label-text">Önskat leveransdatum (Kund)</span></div>
+        <input type="date" class="input input-bordered input-sm focus-ring" [(ngModel)]="model.customerRequestedDeliveryDate" name="customerRequestedDeliveryDate" />
+      </label>
+      <label class="form-control w-full md:col-span-2">
+        <div class="label"><span class="label-text">Anteckningar</span></div>
+        <textarea class="textarea textarea-bordered textarea-sm h-24 focus-ring" [(ngModel)]="model.notes" name="notes" placeholder="Interna anteckningar..."></textarea>
+      </label>
+    </div>
+    <div class="flex justify-end gap-2 pt-2">
+      <button class="btn btn-ghost btn-sm focus-ring" type="button" routerLink="/projekt">Avbryt</button>
+      <button class="btn btn-primary btn-sm focus-ring" type="button" [disabled]="saving || !model.name || !model.customerName" (click)="saveMock()">
+        <span *ngIf="!saving">Spara</span>
+        <span *ngIf="saving" class="loading loading-spinner loading-xs"></span>
+      </button>
+    </div>
+  </div>
+
+</div>

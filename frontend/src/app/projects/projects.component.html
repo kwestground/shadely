@@ -1,0 +1,60 @@
+<div class="max-w-7xl mx-auto flex flex-col gap-6">
+  <!-- Header + Filters -->
+  <div class="flex flex-col gap-4">
+    <div>
+      <h1>Projekt</h1>
+    </div>
+    <div class="flex flex-wrap gap-4 items-end w-full">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium opacity-70">Snabbsök</label>
+        <div class="flex gap-2">
+          <input type="text" placeholder="(namn, kund)" class="input input-sm input-bordered w-64 focus-ring" [(ngModel)]="searchValue" />
+          <button class="btn btn-sm focus-ring" (click)="clearSearch()" *ngIf="search()">Rensa</button>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium opacity-70">Status</label>
+        <select class="select select-bordered select-sm w-44 focus-ring" [(ngModel)]="statusFilter">
+          <option>Alla</option>
+          <option>Draft</option>
+          <option>Quoted</option>
+            <option>Approved</option>
+            <option>Completed</option>
+        </select>
+      </div>
+      <div class="ml-auto flex items-end">
+        <button class="btn btn-primary btn-sm focus-ring gap-2" routerLink="/projekt/ny"><span class="text-base leading-none font-bold">+</span><span>Nytt Projekt</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel p-0">
+    <app-data-table
+      [columns]="columns"
+      [items]="result().items"
+      [total]="total()"
+      [page]="page()"
+      [pageSize]="pageSize()"
+      [totalPages]="totalPages()"
+      [sortField]="sortField()"
+      [sortDir]="sortDir()"
+      (sort)="toggleSort($event)"
+      (pageChange)="setPage($event)"
+      (pageSizeChange)="changePageSize($event)">
+
+      <ng-template dataTableCell="status" let-row>
+        <div class="badge" [class.badge-ghost]="row.status==='Draft'" [class.badge-info]="row.status==='Quoted'" [class.badge-success]="row.status==='Approved'" [class.badge-neutral]="row.status==='Completed'">{{row.status}}</div>
+      </ng-template>
+      <ng-template dataTableCell="quoteTotalAmount" let-row>
+        <span class="font-mono tabular-nums">{{row.quoteTotalAmount | sek}}</span>
+      </ng-template>
+      <ng-template #rowActions let-row>
+        <div class="flex gap-1 justify-end">
+          <button class="btn btn-ghost btn-2xs md:btn-xs focus-ring">Visa</button>
+          <button class="btn btn-ghost btn-2xs md:btn-xs focus-ring">Mer</button>
+        </div>
+      </ng-template>
+    </app-data-table>
+  </div>
+
+</div>

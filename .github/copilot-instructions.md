@@ -2,6 +2,11 @@
 
 Purpose: Enable AI coding agents to be immediately productive in this mono‑repo (currently only the Angular mock UI is present; backend architecture & domain model are defined in `README.md` but not yet implemented).
 
+## Kommunikation (Repo-specifik preferens)
+- ALL dialog med projektägaren ska ske på svenska (förklaringar, motiveringar, sammanfattningar). Kod, klass-/enum-namn och tekniska identifierare förblir på engelska enligt övriga riktlinjer.
+- Om extern dokumentation citeras på engelska: ge först svensk förklaring, därefter ev. originalcitat.
+- Behåll kort och koncis ton; undvik onödigt engelskt fackspråk där det finns etablerad svensk term (ex: "bygga" istället för "build" när sammanhanget är tydligt).
+
 ## Big Picture
 - Product: Mini ERP for curtains / sun protection covering sales → measurement → configuration → purchasing → production → installation → invoicing.
 - Current code = Frontend prototype (`frontend/`) with Tailwind + DaisyUI + Angular v20 standalone components + signals. Backend exists only as documented architecture (future `.NET` solution with layered projects: Api/Core/Infrastructure/Services/Integration).
@@ -45,6 +50,15 @@ Purpose: Enable AI coding agents to be immediately productive in this mono‑rep
 - Testing: When introduced, colocate `*.spec.ts` next to component; keep tests light (render + key interaction). Use Angular TestBed with standalone component.
 - Performance: Prefer on-push style via standalone defaults + signals; avoid large reactive chains—simple signals suffice.
 - Documentation hygiene: When you add a new reusable component / directive / pipe (esp. under `shared/`), append or adjust a concise usage note in this file (or create a short `README.md` in that subfolder) covering: purpose, minimal usage snippet, key inputs/outputs, and any conventions (styling, accessibility, theming). Keep it terse so future agents can re-use without re-reading source.
+
+### Shared Pipe Usage Notes
+
+#### `SekCurrencyPipe` (`sek`)
+Purpose: Format belopp i SEK enligt svensk standard (mellanslag som tusentalsavskiljare, "kr" efter belopp). Standalone pipe.
+Minimal: `{{ amount | sek }}` → `12 345 kr`
+Med decimaler: `{{ amount | sek:{decimals:2} }}` → `12 345,50 kr`
+Parametrar: `decimals?: number` (default 0), `showZeroDecimals?: boolean` (tvinga visa `.00` om decimals>0 och värdet är heltal)
+Edge: Returnerar tom sträng om indata ej är numeriskt.
 
 ## Quality & Consistency Checklist (Apply on PRs)
 - Component uses standalone & imports only what it needs.
