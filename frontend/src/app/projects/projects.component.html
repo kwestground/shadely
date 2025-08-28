@@ -50,7 +50,7 @@
       </ng-template>
       <ng-template #rowActions let-row>
         <div class="flex gap-1 justify-end">
-          <button class="btn btn-ghost btn-2xs md:btn-xs focus-ring">Visa</button>
+          <a class="btn btn-ghost btn-2xs md:btn-xs focus-ring" [routerLink]="['/projekt', row.id]">Visa</a>
           <button class="btn btn-ghost btn-2xs md:btn-xs focus-ring">Mer</button>
         </div>
       </ng-template>

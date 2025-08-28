@@ -38,6 +38,25 @@ export class ProjectMockService {
 
   listAll() { return this.all(); }
 
+  getById(id: number) { return this.all().find(p => p.id === id) || null; }
+
+  addProject(data: { name: string; customerName: string; customerRequestedDeliveryDate?: string }): Project {
+    const items = this.all();
+    const nextId = Math.max(...items.map(p=>p.id), 5000) + 1;
+    const today = new Date().toISOString().slice(0,10);
+    const project: Project = {
+      id: nextId,
+      name: data.name.trim() || `Projekt ${nextId}`,
+      customerName: data.customerName.trim() || 'Okänd Kund',
+      status: 'Draft',
+      quoteTotalAmount: 0,
+      customerRequestedDeliveryDate: data.customerRequestedDeliveryDate || undefined,
+      created: today
+    };
+    this.all.set([...items, project]);
+    return project;
+  }
+
   query(q: ProjectQuery): ProjectQueryResult {
     const search = (q.search ?? '').trim().toLowerCase();
     const status = q.status ?? '';

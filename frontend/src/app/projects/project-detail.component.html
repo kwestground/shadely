@@ -1,0 +1,157 @@
+<div class="max-w-7xl mx-auto flex flex-col gap-6" *ngIf="project() as p">
+  <div class="flex items-center gap-4 flex-wrap">
+    <a routerLink="/projekt" class="btn btn-ghost btn-sm focus-ring">Tillbaka</a>
+    <h1 class="m-0 flex items-center gap-3">
+      <span>{{p.name}}</span>
+      <div class="badge" [class.badge-success]="p.status==='Approved'" [class.badge-info]="p.status==='Quoted'" [class.badge-ghost]="p.status==='Draft'" [class.badge-neutral]="p.status==='Completed'">{{p.status}}</div>
+    </h1>
+    <div class="ml-auto flex items-center gap-4 text-sm">
+      <div><span class="opacity-70">Kund:</span> {{p.customerName}}</div>
+      <div class="hidden md:block"><span class="opacity-70">Skapad:</span> <span class="font-mono">{{p.created}}</span></div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="panel p-4 space-y-2">
+      <h2 class="text-sm font-semibold opacity-70">Leverans</h2>
+      <div class="text-sm flex flex-col gap-1">
+        <div><span class="opacity-70">Önskat (Kund):</span> <span class="font-mono">{{p.customerRequestedDeliveryDate || '—'}}</span></div>
+        <div><span class="opacity-70">Beräknat:</span> <span class="font-mono">{{p.calculatedDeliveryDate || '—'}}</span></div>
+      </div>
+    </div>
+    <div class="panel p-4 space-y-2">
+      <h2 class="text-sm font-semibold opacity-70">Status</h2>
+      <p class="text-sm opacity-80">Denna översikt är en mock. Funktioner för uppdatering av status och datum kommer senare med backend.</p>
+    </div>
+  </div>
+  <!-- Snabb summering -->
+  <div class="grid sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-2">
+    <div class="stat py-3 px-4 shadow bg-base-200/50 rounded">
+      <div class="stat-title">Områden</div>
+      <div class="stat-value text-lg font-mono">{{areas().length}}</div>
+    </div>
+    <div class="stat py-3 px-4 shadow bg-base-200/50 rounded">
+      <div class="stat-title">Positioner</div>
+      <div class="stat-value text-lg font-mono">{{totalPositions()}}</div>
+    </div>
+    <div class="stat py-3 px-4 shadow bg-base-200/50 rounded">
+      <div class="stat-title">Konfigurerade</div>
+      <div class="stat-value text-lg font-mono">{{configuredPositions()}}</div>
+    </div>
+  </div>
+  <div class="flex flex-col gap-6 mt-8">
+    <div class="flex items-center gap-2">
+      <h2 class="m-0 text-base font-semibold">Områden ({{areas().length}} / {{totalPositions()}} pos)</h2>
+      <button class="btn btn-sm btn-primary focus-ring" *ngIf="!addingArea()" (click)="startAddArea()">Nytt Område</button>
+      <div *ngIf="addingArea()" class="flex items-center gap-2">
+        <input class="input input-sm input-bordered focus-ring" placeholder="Namn" [ngModel]="newAreaName()" (ngModelChange)="newAreaName.set($event)" />
+        <button class="btn btn-sm btn-primary focus-ring" (click)="saveArea()" [disabled]="!newAreaName().trim()">Spara</button>
+        <button class="btn btn-sm btn-ghost focus-ring" (click)="cancelAddArea()">Avbryt</button>
+      </div>
+    </div>
+    <div class="flex flex-col gap-4">
+      <div *ngFor="let a of areas()" class="panel p-3 flex flex-col gap-3 w-full">
+        <div class="flex items-center justify-between">
+          <div class="font-medium truncate" [title]="a.name">{{a.name}}</div>
+          <div class="badge badge-outline">{{a.positions.length}} pos</div>
+        </div>
+        <div class="overflow-auto max-h-72">
+          <table class="table table-xs">
+            <thead>
+              <tr>
+                <th class="w-14">#</th>
+                <th>Namn</th>
+                <th class="w-16 text-right">B (cm)</th>
+                <th class="w-16 text-right">H (cm)</th>
+                <th class="w-16 text-right">m²</th>
+                <th class="w-20">Fäst</th>
+                <th class="w-28">Tyg</th>
+                <th class="w-20">Status</th>
+                <th class="w-20"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let pos of a.positions" class="hover" [class.bg-base-200/40]="editingPos()?.positionId===pos.id && editingPos()?.areaId===a.id">
+                <ng-container *ngIf="editingPos()?.positionId===pos.id && editingPos()?.areaId===a.id; else viewRow">
+                  <td class="font-mono text-xs">{{pos.id}}</td>
+                  <td>
+                    <input id="edit-pos-name-{{a.id}}-{{pos.id}}" class="input input-xs input-bordered w-full focus-ring" [ngModel]="editData()?.name" (ngModelChange)="setEditField('name',$event)" (keydown)="onEditKey($event)" />
+                  </td>
+                  <td>
+                    <input type="number" class="input input-xs input-bordered w-full text-right focus-ring" [ngModel]="editData()?.width" (ngModelChange)="setEditField('width',$event?+($event):undefined)" (keydown)="onEditKey($event)" />
+                  </td>
+                  <td>
+                    <input type="number" class="input input-xs input-bordered w-full text-right focus-ring" [ngModel]="editData()?.height" (ngModelChange)="setEditField('height',$event?+($event):undefined)" (keydown)="onEditKey($event)" />
+                  </td>
+                  <td class="text-right font-mono text-xs">
+                    {{ (editData()?.width && editData()?.height) ? ((editData()!.width!*editData()!.height!/10000) | number:'1.2-2') : '—' }}
+                  </td>
+                  <td>
+                    <select class="select select-xs select-bordered w-full focus-ring" [ngModel]="editData()?.fasteningType" (ngModelChange)="setEditField('fasteningType',$event)" (keydown)="onEditKey($event)">
+                      <option>Wave</option>
+                      <option>Rynk</option>
+                      <option>Öljett</option>
+                    </select>
+                  </td>
+                  <td class="align-top">
+                    <app-item-picker [category]="'Fabric'" [showSelectedBadge]="false" [selected]="editData()?.fabricItemId || null" (selectedChange)="setEditField('fabricItemId',$event); setEditField('fabric', $event ? (null) : '')" (itemSelected)="setEditField('fabric',$event?.name || '')"></app-item-picker>
+                  </td>
+                  <td class="text-xs opacity-60">{{pos.status}}</td>
+                  <td class="flex gap-1 justify-end">
+                    <button class="btn btn-primary btn-2xs focus-ring" (click)="saveEditPosition()" [disabled]="!editData()?.name?.trim()">Spara</button>
+                    <button class="btn btn-ghost btn-2xs focus-ring" (click)="cancelEditPosition()">Avbryt</button>
+                  </td>
+                </ng-container>
+                <ng-template #viewRow>
+                  <td class="font-mono text-xs">{{pos.id}}</td>
+                  <td>{{pos.name}}</td>
+                  <td class="text-right font-mono text-xs">{{pos.width || '—'}}</td>
+                  <td class="text-right font-mono text-xs">{{pos.height || '—'}}</td>
+                  <td class="text-right font-mono text-xs">{{ (pos.width && pos.height) ? ((pos.width*pos.height/10000) | number:'1.2-2') : '—' }}</td>
+                  <td class="text-xs">{{pos.fasteningType || '—'}}</td>
+                  <td class="text-xs truncate" [title]="pos.fabric">{{pos.fabric || '—'}}</td>
+                  <td>
+                    <div class="badge badge-ghost" [class.badge-info]="pos.status==='Measured'" [class.badge-success]="pos.status==='Configured'">{{pos.status}}</div>
+                  </td>
+                  <td class="text-right">
+                    <button class="btn btn-ghost btn-2xs focus-ring" (click)="startEditPosition(a.id,pos.id)">Redigera</button>
+                  </td>
+                </ng-template>
+              </tr>
+              <tr *ngIf="addingPosAreaId()===a.id" class="bg-base-200/40">
+                <td class="font-mono text-xs">ny</td>
+                <td>
+                  <input id="new-pos-name-{{a.id}}" class="input input-xs input-bordered w-full focus-ring" [ngModel]="newPosData()?.name" (ngModelChange)="setNewPosField('name',$event)" (keydown)="onNewPosKey($event,a)" />
+                </td>
+                <td>
+                  <input type="number" class="input input-xs input-bordered w-full text-right focus-ring" [ngModel]="newPosData()?.width" (ngModelChange)="setNewPosField('width',$event?+($event):undefined)" (keydown)="onNewPosKey($event,a)" />
+                </td>
+                <td>
+                  <input type="number" class="input input-xs input-bordered w-full text-right focus-ring" [ngModel]="newPosData()?.height" (ngModelChange)="setNewPosField('height',$event?+($event):undefined)" (keydown)="onNewPosKey($event,a)" />
+                </td>
+                <td class="text-right font-mono text-xs">
+                  {{ (newPosData()?.width && newPosData()?.height) ? ((newPosData()!.width!*newPosData()!.height!/10000) | number:'1.2-2') : '—' }}
+                </td>
+                <td>
+                  <select class="select select-xs select-bordered w-full focus-ring" [ngModel]="newPosData()?.fasteningType" (ngModelChange)="setNewPosField('fasteningType',$event)" (keydown)="onNewPosKey($event,a)">
+                    <option>Wave</option>
+                    <option>Rynk</option>
+                    <option>Öljett</option>
+                  </select>
+                </td>
+                <td class="align-top">
+                  <app-item-picker [category]="'Fabric'" [showSelectedBadge]="false" [selected]="newPosData()?.fabricItemId || null" (selectedChange)="setNewPosField('fabricItemId',$event); setNewPosField('fabric', $event ? (null) : '')" (itemSelected)="setNewPosField('fabric',$event?.name || '')"></app-item-picker>
+                </td>
+                <td class="text-xs opacity-60">Draft</td>
+                <td class="flex gap-1 justify-end">
+                  <button class="btn btn-primary btn-2xs focus-ring" (click)="saveNewPosition(a)" [disabled]="!newPosData()?.name?.trim()">Spara</button>
+                  <button class="btn btn-ghost btn-2xs focus-ring" (click)="cancelAddPosition()">Avbryt</button>
+          </table>
+        </div>
+        <div>
+          <button *ngIf="addingPosAreaId()!==a.id" class="btn btn-ghost btn-xs focus-ring" (click)="startAddPosition(a)">+ Ny Position</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
