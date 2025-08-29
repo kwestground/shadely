@@ -48,5 +48,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany(a => a.Positions)
             .HasForeignKey(p => p.AreaId)
             .OnDelete(DeleteBehavior.Cascade);
+
+    // Decimal precision for measured dimensions (cm, two decimals enough if we later store fractions)
+    modelBuilder.Entity<AreaPosition>().Property(p => p.Width).HasPrecision(9, 2);
+    modelBuilder.Entity<AreaPosition>().Property(p => p.Height).HasPrecision(9, 2);
     }
 }

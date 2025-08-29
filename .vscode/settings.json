@@ -1,0 +1,23 @@
+{
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/bin": true,
+    "**/obj": true,
+    "**/.angular": true,
+    "**/.eslintcache": true,
+    "**/.vite": true,
+    "**/.turbo": true,
+    "**/.DS_Store": true,
+    "**/coverage": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/bin": true,
+    "**/obj": true,
+    "**/.angular": true,
+    "**/.vite": true,
+    "**/coverage": true
+  }
+}

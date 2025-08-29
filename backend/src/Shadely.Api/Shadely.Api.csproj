@@ -10,11 +10,15 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
   <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   <PackageReference Include="WolverineFx" Version="4.10.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.14.0" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Shadely.Core\Shadely.Core.csproj" />
-    <ProjectReference Include="..\Shadely.Services\Shadely.Services.csproj" />
   <ProjectReference Include="..\Shadely.Infrastructure\Shadely.Infrastructure.csproj" />
   </ItemGroup>
 

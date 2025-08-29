@@ -79,5 +79,6 @@ Central index of living documentation under `docs/`. Whenever you add/rename/rem
 Current docs:
 - `docs/DESIGN_GUIDELINES.md` – Frontend UI design & styling guidelines.
 - `docs/frontend/data-table.md` – Generic DataTable component usage & API.
+ - `docs/backend/migrations.md` – EF Core migrations workflow & conventions.
 
 Rule: PRs introducing new docs MUST append a bullet with path + short (max ~12 words) description here.

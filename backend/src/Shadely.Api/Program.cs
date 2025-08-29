@@ -4,6 +4,7 @@ using Shadely.Api.Endpoints;
 using Wolverine;
 
 var builder = WebApplication.CreateBuilder(args);
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
 
 // Wolverine setup
 builder.Host.UseWolverine(opts =>
@@ -16,7 +17,7 @@ builder.Host.UseWolverine(opts =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseInMemoryDatabase("shadely_dev"));
+builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseSqlServer(defaultConnection));
 
 var app = builder.Build();
 
@@ -24,6 +25,15 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    // Auto apply pending EF Core migrations in Development if enabled
+    var apply = app.Configuration.GetSection("Database").GetValue<bool>("ApplyMigrations");
+    if (apply)
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        db.Database.Migrate();
+    }
 }
 
 app.UseHttpsRedirection();

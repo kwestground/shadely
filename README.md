@@ -208,29 +208,34 @@ Vi använder en "Vertical Slice" struktur för nya endpoints istället för klas
 - Endpoint-registrering (extension-metod `MapEndpoint`)
 
 Mål & motiv:
+
 - Minska god-klass controllers och koppling mellan use cases
 - Tydlig high-cohesion: ta bort en funktion = ta bort en fil
 - Enkel väg att introducera validering, audit, domän-events utan att röra många filer
 - Underlätta senare uppgradering till full CQRS / event-driven (Wolverine eller liknande)
 
 Status (nu):
+
 - Customers migrerad till Vertical Slice (Create, List, GetById)
 - Ingen extern mediator ännu; direkthantering mot `ApplicationDbContext`
 - Enums lagras som string via EF Core
 
 Planerade nästa steg när behov uppstår:
+
 - Introducera `ICommand<T>` / `IQuery<T>` + enkel dispatcher eller Wolverine
 - FluentValidation middleware för generisk validering
 - Audit interceptor + domain events publicering
 - Utrullning till övriga aggregate (Projects, Areas, AreaPositions)
 
 Konventioner:
+
 - Varje slice fil namnges efter use case (`Create.cs`, `GetList.cs`, etc.) under `Api/Endpoints/<Aggregate>/`
 - Endpoint group registreras i `EndpointRegistration` och anropas från `Program.cs`.
 - Queries: `AsNoTracking()` + projektion direkt till DTO.
 - Commands: Minimal logik + delegerar regelkontroll till domänmetoder / domänservice när reglerna växer.
 
 Exempel (förenklad Create slice):
+
 ```csharp
 public static class CreateCustomer
 {
@@ -258,6 +263,130 @@ public static class CreateCustomer
 ```
 
 Se koden i `Shadely.Api/Endpoints/Customers/` för skarp implementation.
+
+### Backend Arkitektur – Fördjupning
+
+Detta avsnitt beskriver hur backend struktureras praktiskt för att stödja domänkedjan (Customer → Project → Area → AreaPosition → Production/Inventory) och framtida skalning (eventdrivet, integrationsjobb, audit, lagertransaktioner) utan att skapa överdesign i MVP.
+
+#### Lager & Ansvar (nuvarande / planerat)
+
+| Lager                         | Syfte                                                                | Innehåll nu                                                                  | Planerade utökningar                                                             |
+| ----------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Core                          | Ren domän (Entities, Enums, ValueObjects, domänregler)               | Enums, bas-entiteter (Customer/Project/Area/AreaPosition)                    | Domain Events, Value Objects (Dimension, MeasurementSet), State-transition rules |
+| Infrastructure                | Persistens (EF Core), konfiguration, interceptors                    | `ApplicationDbContext` (InMemory)                                            | SQL Server migrations, Audit interceptor, InventoryTransaction expansion, Outbox |
+| Api (Application + Transport) | Endpoints (Minimal API), Vertical Slices, Commands/Queries, Handlers | Customer slices (Create/List/GetById) + ICommand/IQuery markeringsinterfaces | Validering (FluentValidation), ProblemDetails, Meddelandepipeline, fler aggregat |
+| Integration                   | Externa system (Fortnox, e‑post, SMS)                                | (tom)                                                                        | Fortnox client + adapter, Notification publishers                                |
+
+#### Request Livscykel (Command/Query)
+
+1. HTTP request träffar Minimal API endpoint (t.ex. POST /api/customers).
+2. Endpoint materialiserar ett message (Command eller Query record) och anropar `IMessageBus.InvokeAsync` (WolverineFx in-process just nu).
+3. Wolverine lokaliserar handler-metod `Handle(message, ApplicationDbContext, ...)` via signaturmatching.
+4. Handler utför domänlogik / EF operationer inom en implicit transaktion (senare: transaktionspolicy + outbox).
+5. Domänhändelser (när infört) samlas och publiceras efter persistens.
+6. Result record returneras → endpoint formaterar HTTP-response (Created/Ok/NotFound etc.).
+
+#### Command vs Query Konvention
+
+- Commands (ändrar tillstånd): suffix `...Command`, svar `...Result`.
+- Queries (läser/projekterar): suffix `...Query`, svar antingen enkel DTO eller lista. Alltid `AsNoTracking()` + projektion i ett enda LINQ-uttryck för att undvika onödig materialisering.
+- Handler-namn: `<Operation>Handler` med metod `Task<TResponse> Handle(Message, ApplicationDbContext, CancellationToken)`.
+
+#### Naming & Map-konsistens
+
+- Mappning fil ↔ use case 1:1 (ingen "CustomerService" med samlade 15 funktioner).
+- Endpoints extension-metod prefix `Map` + use case (t.ex. `MapCreateCustomer`).
+
+#### Persistensstrategi
+
+- MVP: InMemory DB för snabb iteration.
+- Produktion: SQL Server (eller Postgres) med EF Core migrations (`dotnet ef migrations add Initial`).
+- Enums: lagras som `string` (`HasConversion<string>()`) för läsbarhet och enkel refactor. Vid namnbyte: migreringsskript + ev. fallback mappinglista.
+- Soft Delete: Global query filter `IsDeleted = false`. Delete → sätter fält. Hard delete endast genom administrativ process. (Interceptor implementeras när vi börjar göra delete-endpoints.)
+- Optimistisk samtidighet: `RowVersion` (byte[]) på basentitet; kollision ger 409 (ProblemDetails `type="concurrency_conflict"`).
+
+#### Validering (plan)
+
+- FluentValidation per Command/Query (klass `CreateCustomerCommandValidator`).
+
+- Wolverine middleware som söker `IValidator<T>` och kastar `ValidationException` → map till 400 ProblemDetails.
+- Enkel regel i domän (invarians) stannar i entitetsmetoder så att även interna scripts/handlers får samma skydd.
+
+#### Felhantering & ProblemDetails (plan)
+
+Gemensam exception-mappning:
+
+- `ValidationException` → 400 + fel per fält.
+- `EntityNotFoundException` → 404.
+- `ConcurrencyException` → 409.
+- `DomainRuleException` → 422 (semantisk konflikt).
+- Övrigt → 500 med CorrelationId.
+
+#### Audit & Spårbarhet (planerad design)
+
+Interceptor i Infrastructure itererar ChangeTracker:
+
+1. Identifierar Added/Modified/SoftDeleted.
+2. Diffar original vs current → JSON `FieldChanges` (exkluderar tekniska fält).
+3. Skapar `AuditLog` entitet med CorrelationId (återbruk av Wolverine message Id eller genererat guid).
+4. Persistens i samma transaktion. Reversal logik registrerar länkar.
+
+#### Domain Events (plan)
+
+- Entiteter implementerar pattern: intern lista `List<object> _domainEvents` + metod `Raise(event)`.
+- Efter `SaveChanges` plockas events upp och publishas via `IMessageBus.PublishAsync` (Wolverine).
+- Exempel: `ProjectStatusChanged` → trigga materialreservation eller ny `ProductionOrder` generering.
+
+#### Inventory & Shortage (framtida)
+
+#### Prestanda & Skalning
+
+- Projektioner i queries (ingen AutoMapper overhead i MVP).
+
+- När endpoints blir många: möjlig kodgenerering av registrering eller konventionell scanning av `Map*` extension-metoder.\
+- Caching-lager (MemoryCache/Redis) läggs endast på läs-intensiva queries (listor av Items, attributlistor) – inte på transaktionella writes.
+
+#### Logging & Observability (plan)
+
+#### Teststrategi
+
+- Unit: rena handlers med InMemoryDbContextFactory.
+- Slice: Minimal API via `WebApplicationFactory` + HTTP assertion.
+
+- Integration: End-to-end för komplexa flöden (ex: skapa Project med Areas -> skapa AreaPositions -> generera ProductionOrder).
+- Kontraktsstabilitet: alternativ snapshot av OpenAPI (kontroll i CI).
+
+#### Migrations & Versionspolicy
+
+- Initial migration när första persistenta tabellstrukturen är klar (efter att Projects + AuditLog + InventoryTransactions modeller definierats).
+- Konsekvent "expand and contract": Lägg fält (nullable), bakfyll data script, gör NOT NULL i senare migration.
+
+#### Säkerhet (framtida)
+
+- JWT-baserad auth; varje message får `UserContext` injicerad (claims mapping).\
+- Authorizationspolicy på endpoint-grupper (`customers.RequireAuthorization("Sales")`).\
+
+- Radbaserad åtkomst i queries (Customer/Project isolering) när multi-tenant behov dyker upp.
+- För write-endpoints med extern retriable klient: Header `Idempotency-Key` + tabell för nyckel/hash + resultatcache (gäller t.ex. betalnings-/fakturatrigger).\
+
+- Wolverine saga/outbox kan återanvända CorrelationId.
+
+#### När vi introducerar mer komplexitet
+
+| Funktion             | Trigger för införande                                                  | Lösning                                            |
+| -------------------- | ---------------------------------------------------------------------- | -------------------------------------------------- |
+| Outbox               | Externa events (Fortnox) riskerar förlust                              | Wolverine RDBMS outbox + background daemon         |
+| Sagas / orkestrering | Långvariga multi-steg flöden (purchase -> receipt -> production start) | Wolverine stateful saga (aggregate by correlation) |
+| Feature toggles      | A/B funktioner                                                         | Enkel tabell + in-memory cache                     |
+| Fulltext-sök         | Avancerad sökning i projekt/attachments                                | Azure Search / Elastic index-projicerad via events |
+
+#### Sammanfattning Arkitekturprinciper
+
+- Börja enkelt (in-process messaging) men forma koden så att asynk/eventdrivet kan kopplas på utan mass-refactor.
+- Vertikal slice över klassiska services för att minska koppling och förbättra läsbarhet.
+- Domänlogik i Core först när regler uppstår – inte tvärtom.
+- Infra är utbytbar (InMemory → SQL Server → ev. Postgres) eftersom resten bara konsumerar DbContext + LINQ.
+- Observability & audit byggs in tidigt för att undvika retro-fit kostnad.
 
 ### Frontend (Angular)
 
@@ -402,7 +531,7 @@ src/
 - DisplayOrder, ValidationRules (JSON)
 - AttributeType: 'Selection', 'NumberRange', 'FreeText', 'ItemSelection', 'Calculation'
 - Category (för ItemSelection - t.ex. "Fabric", "Skena")
-- CalculationFormula (för AttributeType='Calculation' - t.ex. "bredd * höjd")
+- CalculationFormula (för AttributeType='Calculation' - t.ex. "bredd \* höjd")
 - DisplayFormat (för Calculation - t.ex. "{0:F2} m²", "SEK {0:N0}")
 - IsVisibleInUI (true för att visa beräknat värde till användaren)
 
@@ -467,7 +596,7 @@ src/
 - Id, ItemId, MaterialItemId, QuantityFormula, Unit
 - WasteFactor, IsOptional, Description
 - Conditions (JSON för när materialet behövs)
-- (T.ex: ItemId=Gardin, MaterialItemId=Tyg, Formula: "bredd * höjd *1.1")
+  Exempel: ItemId=Gardin, MaterialItemId=Tyg, Formula: bredd × höjd × 1.1
 
 ### PurchaseOrders
 
@@ -543,7 +672,7 @@ Basfält på huvudentiteter: IsDeleted, DeletedDate, DeletedByUserId.
 Vi ersätter tidigare idé om enum-tabeller med vanliga .NET enums i kodbasen under MVP.
 
 Exempel (C#):
- 
+
 ```csharp
 public enum ProjectStatus { Draft, Measuring, Quoted, Approved, Purchasing, InProduction, Installing, Completed, Cancelled }
 public enum AreaPositionStatus { Draft, Measuring, Configured, Quoted, Approved, InProduction, Installing, Completed, Cancelled }
@@ -593,6 +722,7 @@ Edge cases: Negativt OnHand -> ShortageSeverity=DataError, OrderSpecific visas p
   (ex: tidigare värde 'InProduction' -> nytt 'Production' hanteras via script + AllowedLegacyValues-lista)
 
 ---
+
 Tillägg: standardiserade statusar, revisionsspårning, soft delete, inventeringstransaktioner och shortage-analys.
 
 ## Utvecklingsfaser
