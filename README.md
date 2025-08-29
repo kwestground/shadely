@@ -198,6 +198,67 @@ src/
 └── Shadely.Integration/      # Fortnox integration
 ```
 
+#### Arkitekturimplementation (Minimal API + Vertical Slice + CQRS Light)
+
+Vi använder en "Vertical Slice" struktur för nya endpoints istället för klassiska controllers. Varje use case blir en egen liten slice (t.ex. `Customers/Create.cs`) som innehåller:
+
+- Request/Command/Query record
+- Handler-metod (ren funktion som tar beroenden via parameter-injektion)
+- Result/DTO record
+- Endpoint-registrering (extension-metod `MapEndpoint`)
+
+Mål & motiv:
+- Minska god-klass controllers och koppling mellan use cases
+- Tydlig high-cohesion: ta bort en funktion = ta bort en fil
+- Enkel väg att introducera validering, audit, domän-events utan att röra många filer
+- Underlätta senare uppgradering till full CQRS / event-driven (Wolverine eller liknande)
+
+Status (nu):
+- Customers migrerad till Vertical Slice (Create, List, GetById)
+- Ingen extern mediator ännu; direkthantering mot `ApplicationDbContext`
+- Enums lagras som string via EF Core
+
+Planerade nästa steg när behov uppstår:
+- Introducera `ICommand<T>` / `IQuery<T>` + enkel dispatcher eller Wolverine
+- FluentValidation middleware för generisk validering
+- Audit interceptor + domain events publicering
+- Utrullning till övriga aggregate (Projects, Areas, AreaPositions)
+
+Konventioner:
+- Varje slice fil namnges efter use case (`Create.cs`, `GetList.cs`, etc.) under `Api/Endpoints/<Aggregate>/`
+- Endpoint group registreras i `EndpointRegistration` och anropas från `Program.cs`.
+- Queries: `AsNoTracking()` + projektion direkt till DTO.
+- Commands: Minimal logik + delegerar regelkontroll till domänmetoder / domänservice när reglerna växer.
+
+Exempel (förenklad Create slice):
+```csharp
+public static class CreateCustomer
+{
+  public sealed record Command(string Name, string? Email, string? Phone);
+  public sealed record Result(Guid Id, string Name, string? Email);
+
+  public static async Task<Result> Handle(Command cmd, ApplicationDbContext db, CancellationToken ct)
+  {
+    var entity = new Customer { Name = cmd.Name, Email = cmd.Email, Phone = cmd.Phone };
+    db.Customers.Add(entity);
+    await db.SaveChangesAsync(ct);
+    return new Result(entity.Id, entity.Name, entity.Email);
+  }
+
+  public static RouteGroupBuilder MapEndpoint(this RouteGroupBuilder group)
+  {
+    group.MapPost("", async (Command cmd, ApplicationDbContext db, CancellationToken ct) =>
+    {
+      var result = await Handle(cmd, db, ct);
+      return Results.Created($"/api/customers/{result.Id}", result);
+    });
+    return group;
+  }
+}
+```
+
+Se koden i `Shadely.Api/Endpoints/Customers/` för skarp implementation.
+
 ### Frontend (Angular)
 
 ```typescript
@@ -647,6 +708,7 @@ Tillägg: standardiserade statusar, revisionsspårning, soft delete, inventering
 
 - Angular officiell LLM-referens: <https://angular.dev/llms.txt>
 - DaisyUI LLM-referens: <https://daisyui.com/llms.txt>
+- WolverineFX Guide (arkitektur & messaging – se denna för patterns vi inför): <https://wolverinefx.net/guide/>
 
 ## UI / Design
 

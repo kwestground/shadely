@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
+  <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  <PackageReference Include="WolverineFx" Version="4.10.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shadely.Core\Shadely.Core.csproj" />
+    <ProjectReference Include="..\Shadely.Services\Shadely.Services.csproj" />
+  <ProjectReference Include="..\Shadely.Infrastructure\Shadely.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
